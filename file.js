@@ -29,6 +29,21 @@ function sound(source) {
         this.sound.setAttribute("loop", "loop");
     }
 }
+function MusicFade(soundA,soundB) {
+    fadetime = 500;
+    fadeframes = 10;
+    soundB.sound.volume = 0;
+    soundB.play();
+    function slowfade() {
+        soundA.sound.volume = soundA.sound.volume - currentVolume/fadeframes;
+        soundB.sound.volume = soundB.sound.volume + currentVolume/fadeframes;
+        if (soundA.sound.volume.toFixed(6) == 0 && soundB.sound.volume.toFixed(6) == currentVolume) {
+            clearInterval(fade);
+            soundA.stop();
+        }
+    }
+    var fade = setInterval(slowfade, fadetime/fadeframes);
+}
 loss = new sound("Loss.mp3");
 win = new sound("Win.mp3");
 ZombieTurnTheme = new sound("ZombieTheme.mp3");
@@ -37,15 +52,16 @@ MenuTheme = new sound("MenuTheme.mp3");
 MenuTheme.loop();
 PlantTurnTheme.loop();
 ZombieTurnTheme.loop();
-currentVolume = 100;
+currentVolume = 1;
 SoundArray = [loss, win, ZombieTurnTheme, PlantTurnTheme, MenuTheme];
-News = "Greetings Beta Testers! Version 1.4.0 is out now!<br><br> \
+News = "Greetings Beta Testers! Version 1.4.1 is out now!<br>(the 1 on the end is because of a small bug fixes update)<br><br> \
 New features:<br> \
 Sound and music<br>\
 A settings tab <br>\
 Chomper and Zombies can attack in 4 directions<br>\
 Zombie AI has been updated to work with attacking in 4 directions<br>\
 A “Go to menu” button after you lose<br>\
+Ability descriptions now tell you how long until ability is ready<br>\
 A starting screen before the menu loads<br>\
 Console now displays when a zombie is thinking<br>\
 <br>\
@@ -62,7 +78,7 @@ function RemoveBlocker() {
     wc.removeChild(document.getElementById("MenuLoader"))
     MenuTheme.play();
 }
-function LoadInstructions() {
+function LoadInstructions() { /*update it*/
     wc = document.getElementById("EverythingFitter");
     MessageContainer = document.createElement("div");
     wc.appendChild(MessageContainer);
@@ -110,7 +126,7 @@ function LoadNew() {
     Message.appendChild(CloseButton);
     MessageHeader = document.createElement("p");
     MessageHeader.className = "MessageHeader";
-    MessageHeader.innerHTML = "What's new in Version 1.4.0";
+    MessageHeader.innerHTML = "What's new in Version 1.4.1";
     Message.appendChild(MessageHeader);
     MessageText = document.createElement("p");
     MessageText.className = "MessageText";
@@ -142,13 +158,13 @@ function LoadSettings() {
     MessageSlider = document.createElement("input");
     MessageSlider.className = "slider";
     MessageSlider.type = "range";
-    MessageSlider.value = currentVolume;
+    MessageSlider.value = currentVolume*100;
     Message.appendChild(MessageSlider);
     MessageSlider.oninput = function() {
-        currentVolume = this.value;
+        currentVolume = this.value/100;
         for (theme in SoundArray) {
             theme = SoundArray[theme];
-            theme.sound.volume = currentVolume/100;
+            theme.sound.volume = currentVolume;
         }
     }
 }
@@ -159,7 +175,7 @@ function BackToMenu() {
     wc.innerHTML = '';
     vc = document.createElement("div");
     vc.id="VersionCount";
-    vc.innerHTML="Beta Version 1.4.0";
+    vc.innerHTML="Beta Version 1.4.1";
     wc.appendChild(vc);
     tc = document.createElement("div");
     tc.id="TitleContainer";
@@ -300,7 +316,7 @@ function CreateModal(modalID,modalheader,modaltext,modalimage,modalbuttons) { //
         MessageHeader.className = "MessageHeader";
         MessageHeader.style.display = "inline";
         MessageHeader.innerHTML = modalheader;
-        Message.appendChild(MessageHeader);
+        Message.appendChild(MessageHeader); 
         for (b in modalbuttons) {
             if (currentProjectile.TimeUntilReady > 0 && modalbuttons[b][0] == "Use") {
                 MessageText = document.createElement("p");
@@ -446,7 +462,7 @@ function ResetGame() {
     GunZomb.health = 100;
     Gargantuar.health = 350;
     ZombieArray = [Browncoat, Conehead, Imp, Buckethead, Yeti, GunZomb, Gargantuar]; /*add boss waves*/
-    //ZombieArray = [Yeti];
+    //ZombieArray = [GunZomb];
     AC.coords = [2,2]; 
     availablecoords = [];
     for (x=4; x<10; x++) {
@@ -503,6 +519,8 @@ function ResetGame() {
     for (attack in AC.attacks) {
         AC.attacks[attack].TimeUntilReady = 0;
     }
+    ZombieTurnTheme.sound.src = "ZombieTheme.mp3";
+    PlantTurnTheme.sound.src = "PlantTheme.mp3";
     PlantTurnTheme.play();
     IsPlayerTurn = true;
     CanMove = true;
@@ -546,7 +564,7 @@ function CheckForWin() {
         
     }
 }
-function CheckForLoss() {
+function CheckForLoss() { /*add high scores*/
     if (chomperhealth.innerHTML <= 0) {
         chomperhealth.innerHTML = 0;
         wc.removeChild(fighterPhysArray[fighterArray.indexOf(AC)]);
@@ -1178,9 +1196,9 @@ function TestAttack(zombie, attack) {
                     CreateConsoleText(zombie.name+" has missed "+missedshots+" out of his "+attack.shots+" shots.");
                 }
                 if (missedshots != attack.shots) {
-                    griditemarray[ia].character.health -= attack.damage;
-                    chomperhealth.innerHTML = (parseInt(chomperhealth.innerHTML) - attack.damage).toString();
-                    CreateConsoleText(zombie.name+" has hit Armor Chomper for "+attack.damage.toString()+" damage.",true);
+                    griditemarray[ia].character.health -= attack.damage*(attack.shots-missedshots);
+                    chomperhealth.innerHTML = (parseInt(chomperhealth.innerHTML) - attack.damage*(attack.shots-missedshots)).toString();
+                    CreateConsoleText(zombie.name+" has hit Armor Chomper for "+(attack.damage*(attack.shots-missedshots)).toString()+" damage.",true);
                     if (!(CheckForLoss())) {
                         if (randomint(0, 100) < attack.stunChance) {
                             CreateConsoleText(zombie.name+" has stunned Armor Chomper for one turn.") 
@@ -1259,9 +1277,13 @@ function TestAttack(zombie, attack) {
                 griditemarray[i].sprite = "BlankTile.PNG";
                 phygriditems[i].src = "BlankTile.PNG";
             }
-            else {
+            else if (griditemarray[i].character != AC) {
                 griditemarray[i].sprite = "PurpleTile.PNG";
                 phygriditems[i].src = "PurpleTile.PNG";
+            }
+            else {
+                griditemarray[i].sprite = "GreenTile.PNG";
+                phygriditems[i].src = "GreenTile.PNG";
             }
         }
         if ((zombie.coords[1]-1 >= currentay && currentay >= zombie.coords[1]-attack.range) && currentax === zombie.coords[0] && ZD != 3) {
@@ -1428,8 +1450,7 @@ function ZombieTurn(z) {
                         }
                         else {
                             PlantTurnTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
-                            ZombieTurnTheme.stop();
-                            PlantTurnTheme.play();
+                            MusicFade(ZombieTurnTheme,PlantTurnTheme);//*add better music transition*/
                             IsPlayerTurn = true;
                             CanMove = true;
                             CanAbility = [true, true];
@@ -1454,7 +1475,7 @@ function ZombieTurn(z) {
                         zombie.attacks[a].TimeUntilReady -= 1;
                     }
                     if (CanZAbility[z]) {
-                        TestAttack(zombie,zombie.attacks[a]); /*fix bug where zombie does not use range attack at melee?*/
+                        TestAttack(zombie,zombie.attacks[a]); 
                         if (StopTurn) {
                             break;
                         }
@@ -1493,8 +1514,7 @@ function ZombieTurn(z) {
                                         }
                                         else {
                                             PlantTurnTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
-                                            ZombieTurnTheme.stop();
-                                            PlantTurnTheme.play();
+                                            MusicFade(ZombieTurnTheme,PlantTurnTheme);
                                             IsPlayerTurn = true;
                                             CanMove = true;
                                             CanAbility = [true,true];
@@ -1544,8 +1564,7 @@ turnbutton.onclick = function() {
     IsPlayerTurn = false;
     CanMove = false;
     ZombieTurnTheme.sound.currentTime = PlantTurnTheme.sound.currentTime;
-    PlantTurnTheme.stop();
-    ZombieTurnTheme.play();
+    MusicFade(PlantTurnTheme,ZombieTurnTheme);
     CreateConsoleText("Armor Chomper has ended their turn.")
     for (attack in AC.attacks) {
         attack = AC.attacks[attack];

@@ -83,7 +83,7 @@
     z-index: 999999999; /* Sit on top */
     padding-top: 0vw; /* Location of the box */
     left: 0;
-    top: 70%;
+    top: 60%;
     width: 100%; /* Full width */
     height: 100%; /* Full height */
     overflow: auto; /* Enable scroll if needed */
@@ -206,7 +206,7 @@
     #SettingsButton {
       position:absolute; 
       left:85%; 
-      top:0%;
+      top:4%;
       font-family: 'Marker Felt';
       font-size: 2.2vw;
     }
