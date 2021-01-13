@@ -30,15 +30,24 @@ function sound(source) {
     }
 }
 function MusicFade(soundA,soundB) {
-    fadetime = 500;
-    fadeframes = 10;
+    if (document.getElementById("LoadSettings") != null) {
+        document.getElementById("LoadSettings").remove();
+    }
+    document.getElementById("SettingsButton").onclick = function() {
+        return;
+    }
+    fadetime = 350;
+    fadeframes = 100;
     soundB.sound.volume = 0;
+    countAmount = currentVolume/fadeframes; 
     soundB.play();
     function slowfade() {
-        soundA.sound.volume = soundA.sound.volume - currentVolume/fadeframes;
-        soundB.sound.volume = soundB.sound.volume + currentVolume/fadeframes;
-        if (soundA.sound.volume.toFixed(6) == 0 && soundB.sound.volume.toFixed(6) == currentVolume) {
+        soundA.sound.volume = soundA.sound.volume - countAmount;
+        soundB.sound.volume = soundB.sound.volume + countAmount;
+        if (soundA.sound.volume.toFixed(2) == countAmount.toFixed(2) && soundB.sound.volume.toFixed(2) == (currentVolume-countAmount).toFixed(2)) {
+            document.getElementById("SettingsButton").onclick = LoadSettings;
             clearInterval(fade);
+            soundB.sound.volume = currentVolume;
             soundA.stop();
         }
     }
@@ -49,12 +58,15 @@ win = new sound("Win.mp3");
 ZombieTurnTheme = new sound("ZombieTheme.mp3");
 PlantTurnTheme = new sound("PlantTheme.mp3");
 MenuTheme = new sound("MenuTheme.mp3");
+CriticalTheme = new sound("CriticalTheme.mp3")
 MenuTheme.loop();
 PlantTurnTheme.loop();
 ZombieTurnTheme.loop();
+CriticalTheme.loop();
 currentVolume = 1;
+CriticalStage = false;
 SoundArray = [loss, win, ZombieTurnTheme, PlantTurnTheme, MenuTheme];
-News = "Greetings Beta Testers! Version 1.4.1 is out now!<br>(the 1 on the end is because of a small bug fixes update)<br><br> \
+News = "Greetings Beta Testers! Version 1.4.2 is out now!<br>(the 2 on the end is because of a lot of bugs that needed fixing)<br><br> \
 New features:<br> \
 Sound and music<br>\
 A settings tab <br>\
@@ -126,7 +138,7 @@ function LoadNew() {
     Message.appendChild(CloseButton);
     MessageHeader = document.createElement("p");
     MessageHeader.className = "MessageHeader";
-    MessageHeader.innerHTML = "What's new in Version 1.4.1";
+    MessageHeader.innerHTML = "What's new in Version 1.4.2";
     Message.appendChild(MessageHeader);
     MessageText = document.createElement("p");
     MessageText.className = "MessageText";
@@ -155,7 +167,7 @@ function LoadSettings() {
     MessageText.className = "MessageText";
     MessageText.innerHTML = "Music Volume";
     Message.appendChild(MessageText);
-    MessageSlider = document.createElement("input");
+    MessageSlider = document.createElement("input"); /*add back to menu button and zOmbie turn speed slider*/
     MessageSlider.className = "slider";
     MessageSlider.type = "range";
     MessageSlider.value = currentVolume*100;
@@ -175,7 +187,7 @@ function BackToMenu() {
     wc.innerHTML = '';
     vc = document.createElement("div");
     vc.id="VersionCount";
-    vc.innerHTML="Beta Version 1.4.1";
+    vc.innerHTML="Beta Version 1.4.2";
     wc.appendChild(vc);
     tc = document.createElement("div");
     tc.id="TitleContainer";
@@ -220,6 +232,7 @@ function BackToMenu() {
 function StartGame() {
 ZombieTurnTheme.sound.src = "ZombieTheme.mp3";
 PlantTurnTheme.sound.src = "PlantTheme.mp3";
+SoundArray = [loss, win, ZombieTurnTheme, PlantTurnTheme, MenuTheme];
 MenuTheme.stop();
 wc = document.getElementById("EverythingFitter")
 wc.innerHTML = '';
@@ -462,7 +475,7 @@ function ResetGame() {
     GunZomb.health = 100;
     Gargantuar.health = 350;
     ZombieArray = [Browncoat, Conehead, Imp, Buckethead, Yeti, GunZomb, Gargantuar]; /*add boss waves*/
-    //ZombieArray = [GunZomb];
+    //ZombieArray = [Gargantuar];
     AC.coords = [2,2]; 
     availablecoords = [];
     for (x=4; x<10; x++) {
@@ -541,10 +554,17 @@ function ResetGame() {
 function CheckForWin() {
     if (ZombieArray.length == 0) {
         abilitybuttons.style.display = "none";
-        PlantTurnTheme.stop();
-        PlantTurnTheme.reset();
+        if (CriticalStage) {
+            CriticalTheme.stop();
+            CriticalTheme.reset();
+        }
+        else {
+            PlantTurnTheme.stop();
+            PlantTurnTheme.reset();
+        }
         IsPlayerTurn = false;
         CanMove = false;
+        CriticalStage = false;
         CreateConsoleText("Armor Chomper has beat wave "+difficultylevel+"!")
         endtext = document.createElement("p");
         endtext.id = "EndText";
@@ -591,13 +611,11 @@ function CheckForLoss() { /*add high scores*/
         loss.play();
         return true;
     }
-    else if (chomperhealth.innerHTML <= 75 && (ZombieTurnTheme.sound.src).split("/")[ZombieTurnTheme.sound.src.split("/").length-1] != "CriticalTheme.mp3") {
-        ZombieTurnTheme.stop();
-        PlantTurnTheme.sound.src = "CriticalTheme.mp3";
-        PlantTurnTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
-        ZombieTurnTheme.sound.src = "CriticalTheme.mp3";
-        ZombieTurnTheme.sound.currentTime = PlantTurnTheme.sound.currentTime;
-        ZombieTurnTheme.play();
+    else if (chomperhealth.innerHTML <= 75 && !(CriticalStage)) {
+        CriticalStage = true;
+        CriticalTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
+        MusicFade(ZombieTurnTheme, CriticalTheme);
+        SoundArray.push(CriticalTheme);
     }
     return false;
 }
@@ -1135,6 +1153,9 @@ function SwitchAD() {
     }
 }
 function TestAttack(zombie, attack) {
+    if (!(CanZAbility[ZombieArray.indexOf(zombie)])) {
+        return;
+    }
     willhit = false;
     hitarea = false;
     currentay = 0;
@@ -1145,22 +1166,6 @@ function TestAttack(zombie, attack) {
     for (ia = 0; ia < gridx*gridy; ia++) {
         currentax += 1;
         hitarea = false;
-        // if (CD == 0) {
-        //     if((AC.coords[0]+1 <= currentx && currentx <= AC.coords[0]+attack.range) && currenty === AC.coords[1]) {
-        //     }
-        // }
-        // else if (CD == 1) {
-        //     if((AC.coords[1]+1 <= currenty && currenty <= AC.coords[1]+attack.range) && currentx === AC.coords[0]) {
-        //     }
-        // }
-        // else if (CD == 2) {
-        //     if((AC.coords[0]-1 >= currentx && currentx >= AC.coords[0]-attack.range) && currenty === AC.coords[1]) {
-        //     }
-        // }
-        // else if (CD == 3) {
-        //     if((AC.coords[1]-1 >= currenty && currenty >= AC.coords[1]-attack.range) && currentx === AC.coords[0]) {
-        //     }
-        //}
         if ((zombie.coords[0]-1 >= currentax && currentax >= zombie.coords[0]-attack.range) && currentay === zombie.coords[1]) {
             TZD = 0;
             hitarea = true;
@@ -1208,7 +1213,12 @@ function TestAttack(zombie, attack) {
                         }
                     }
                     else {
-                        ZombieTurnTheme.stop();
+                        if (!(CriticalTheme)) {
+                            ZombieTurnTheme.stop();
+                        }
+                        else {
+                            CriticalTheme.stop();
+                        }
                         StopTurn = true;
                     }
                 }
@@ -1227,17 +1237,6 @@ function TestAttack(zombie, attack) {
         }
     }
     if (!(willhit)) {
-        // for (i = 0; i < gridx*gridy; i++) {
-        //     currentx += 1;
-        //     if ((zombie.coords[0]-1 >= currentx && currentx >= zombie.coords[0]-attack.range) && currenty === zombie.coords[1]) {
-        //         griditemarray[i].sprite = "BlankTile.PNG";
-        //         phygriditems[i].src = "BlankTile.PNG";
-        //     }
-        //     if (currentx%gridx == 0) {
-        //         currenty += 1;
-        //         currentx = 0;
-        //     }
-        // }
         updategrid();
     }
     currentay = 0;
@@ -1339,7 +1338,8 @@ function CalculateMoves(zombie) {
         return;
     }
     if (zombie.coords[1] != AC.coords[1]) {
-        if (Math.random() > ((zombie.coords[0]-AC.coords[0])/10)/(AC.coords[1]-zombie.coords[1])) {
+        //console.log(((zombie.coords[0]-AC.coords[0])*Math.abs(AC.coords[1]-zombie.coords[1]))/10);
+        if (Math.random() > (zombie.coords[0]/(AC.coords[1]-zombie.coords[1]))) {
             if (!(MoveZombie(zombie,[0, RoundToOne(AC.coords[1]-zombie.coords[1])])) && zombie.coords[0] != AC.coords[0]) {
                 if (zombie.coords[0] > AC.coords[0]) {
                     MoveZombie(zombie, [-1,0])
@@ -1450,12 +1450,16 @@ function ZombieTurn(z) {
                         }
                         else {
                             PlantTurnTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
-                            MusicFade(ZombieTurnTheme,PlantTurnTheme);//*add better music transition*/
-                            IsPlayerTurn = true;
-                            CanMove = true;
-                            CanAbility = [true, true];
-                            abilitybuttons.style.display = "block";
-                            UpdateTurnCount();
+                            if (!(CriticalStage)) {
+                                MusicFade(ZombieTurnTheme,PlantTurnTheme);
+                            }
+                            setTimeout(function() {
+                                IsPlayerTurn = true;
+                                CanMove = true;
+                                CanAbility = [true, true];
+                                abilitybuttons.style.display = "block";
+                                UpdateTurnCount();
+                            }, 500)
                         }
                         updategrid();
                     }
@@ -1469,24 +1473,29 @@ function ZombieTurn(z) {
             if (zombie.movesLeft < 1) {
                 zombie.movesLeft += zombie.movement;
             }
+            else {
+                zombie.movesLeft = zombie.movement;
+            }
             setTimeout(function() {
                 for (a in zombie.attacks) {
                     if (zombie.attacks[a].TimeUntilReady > 0) {
                         zombie.attacks[a].TimeUntilReady -= 1;
                     }
                     if (CanZAbility[z]) {
-                        TestAttack(zombie,zombie.attacks[a]); 
-                        if (StopTurn) {
-                            break;
+                        for (a in zombie.attacks) {
+                            TestAttack(zombie,zombie.attacks[a]); 
+                            if (StopTurn) {
+                                break;
+                            }
                         }
                     }
                 }
                 if (!(StopTurn)) {
                     setTimeout(function() {
-                        CalculateMoves(zombie)
+                        CalculateMoves(zombie);
                         setTimeout(function() {
                             if (CanZAbility[z]) {
-                                for (a in zombie.attacks) {
+                                for (a in zombie.attacks) { 
                                     TestAttack(zombie,zombie.attacks[a]);
                                     if (StopTurn) {
                                         break;
@@ -1514,12 +1523,16 @@ function ZombieTurn(z) {
                                         }
                                         else {
                                             PlantTurnTheme.sound.currentTime = ZombieTurnTheme.sound.currentTime;
-                                            MusicFade(ZombieTurnTheme,PlantTurnTheme);
-                                            IsPlayerTurn = true;
-                                            CanMove = true;
-                                            CanAbility = [true,true];
-                                            abilitybuttons.style.display = "block";
-                                            UpdateTurnCount();
+                                            if (!(CriticalStage)) {
+                                                MusicFade(ZombieTurnTheme,PlantTurnTheme);
+                                            }
+                                            setTimeout(function() {
+                                                IsPlayerTurn = true;
+                                                CanMove = true;
+                                                CanAbility = [true, true];
+                                                abilitybuttons.style.display = "block";
+                                                UpdateTurnCount();
+                                            }, 500)
                                         }
                                         updategrid();
                                     }
@@ -1564,7 +1577,9 @@ turnbutton.onclick = function() {
     IsPlayerTurn = false;
     CanMove = false;
     ZombieTurnTheme.sound.currentTime = PlantTurnTheme.sound.currentTime;
-    MusicFade(PlantTurnTheme,ZombieTurnTheme);
+    if (!(CriticalStage)) {
+        MusicFade(PlantTurnTheme,ZombieTurnTheme);
+    }
     CreateConsoleText("Armor Chomper has ended their turn.")
     for (attack in AC.attacks) {
         attack = AC.attacks[attack];
